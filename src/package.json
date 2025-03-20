@@ -1,0 +1,30 @@
+{
+  "name": "tcc-ann-lstm-climatic",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marcioal1991/tcc-ann-lstm.git"
+  },
+  "author": "Marcio Almeida de Lima",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/marcioal1991/tcc-ann-lstm/issues"
+  },
+  "homepage": "https://github.com/marcioal1991/tcc-ann-lstm#readme",
+  "dependencies": {
+    "@tensorflow/tfjs-node-gpu": "^4.22.0",
+    "axios": "^1.9.0",
+    "csv-parser": "^3.2.0",
+    "dashify": "^2.0.0",
+    "dotenv": "^16.4.7",
+    "mongodb": "^6.15.0"
+  }
+}

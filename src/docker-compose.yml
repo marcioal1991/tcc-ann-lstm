@@ -1,0 +1,61 @@
+services:
+  mongodb:
+    container_name: mongodb
+    image: mongo:latest
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: 'marcio'
+      MONGO_INITDB_ROOT_PASSWORD: '123456789'
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-log:/var/log/mongodb
+    networks:
+      - ann-lstm
+  node:
+    container_name: node
+    build:
+      context: .
+      dockerfile: ../docker/Dockerfile
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - ../resources:/resources
+    ports:
+      - '80:80'
+    depends_on:
+      - mongodb
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - capabilities: [ gpu ]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+    command: npm start
+    networks:
+      - ann-lstm
+  tensorboard:
+    image: tensorflow/tensorflow:2.15.0
+    ports:
+      - "6006:6006"
+    volumes:
+      - ./logs:/logs
+    command: "tensorboard --logdir=/logs --host=0.0.0.0"
+    depends_on:
+      - node
+    networks:
+      - ann-lstm
+
+volumes:
+  mongodb-data:
+    driver: local
+    name: mongo-data
+  mongodb-log:
+    driver: local
+    name: mongo-log
+networks:
+  ann-lstm:
+    driver: bridge
