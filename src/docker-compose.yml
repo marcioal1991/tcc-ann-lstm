@@ -38,6 +38,7 @@ services:
     networks:
       - ann-lstm
   tensorboard:
+    container_name: tensorboard
     image: tensorflow/tensorflow:2.15.0
     ports:
       - "6006:6006"
