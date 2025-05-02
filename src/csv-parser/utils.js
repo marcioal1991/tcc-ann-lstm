@@ -35,7 +35,6 @@ export async function createCSVWithoutCityInfos(sourceFile, destinationFilePath)
 
 export async function createCSVForCityInfos(infos, destinationFilePath) {
     const stream = fs.createWriteStream(destinationFilePath);
-
     const cityData = infos.reduce((acc, cur) => {
         if (cur !== '') {
             const parts = cur.split(':');

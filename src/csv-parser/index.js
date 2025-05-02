@@ -1,22 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import '../common/load-env.js'
 import Worker from 'worker_threads';
-// import { MongoClient } from 'mongodb'
 
-
-const __dirname = path.resolve();
-const SOURCE_DIR = path.join(__dirname, '../resources/original');
-const DIST_FOLDER_DIR = path.join(__dirname, '../resources/prepared-csv');
-const WORKER_FILEPATH = path.join(__dirname, 'csv-parser/worker.js')
-
-// const client = new MongoClient('mongodb://marcio:123456789@mongodb:27017');
-// await client.connect();
-// console.log(SOURCE_DIR, DIST_FOLDER_DIR, WORKER_FILEPATH)
-// const db = client.db('meteorological-data');
+const __dirname = import.meta.dirname;
+const SOURCE_DIR = path.join(process.env.FOLDER_ORIGINAL_CSV);
+const DIST_FOLDER_DIR = path.join(process.env.FOLDER_PREPARED_CSV);
+const WORKER_FILEPATH = path.join(__dirname, 'worker.js')
 
 fs.readdir(SOURCE_DIR, (err, directories) => {
     const workers = [];
-
     directories.forEach(async (dirname) => {
         const dir = path.join(SOURCE_DIR, dirname);
 

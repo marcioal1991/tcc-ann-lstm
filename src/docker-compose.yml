@@ -8,12 +8,13 @@ services:
       MONGO_INITDB_ROOT_USERNAME: 'marcio'
       MONGO_INITDB_ROOT_PASSWORD: '123456789'
     volumes:
-      - mongodb-data:/data/db
-      - mongodb-log:/var/log/mongodb
+      - mongodb-ans-lstm:/data/db
+      - mongodb-ans-lstm-log:/var/log/mongodb
     networks:
       - ann-lstm
   node:
     container_name: node
+    user: 1000:1000
     build:
       context: .
       dockerfile: ../docker/Dockerfile
@@ -25,11 +26,6 @@ services:
       - '80:80'
     depends_on:
       - mongodb
-#    deploy:
-#      resources:
-#        reservations:
-#          devices:
-#            - capabilities: [ gpu ]
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
@@ -51,10 +47,10 @@ services:
       - ann-lstm
 
 volumes:
-  mongodb-data:
+  mongodb-ans-lstm:
     driver: local
-    name: mongo-data
-  mongodb-log:
+    name: mongo-ans-lstm-data
+  mongodb-ans-lstm-log:
     driver: local
     name: mongo-log
 networks:
