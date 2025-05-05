@@ -4,8 +4,8 @@ import path from "path";
 import dashify from "dashify";
 import { createCSVForCityInfos, createCSVWithoutCityInfos } from "./utils.js";
 
-parentPort.on('message', async ({ dirname, cityName, distFolder }) => {
-    await fs.readdir(dirname, async (err, files) => {
+parentPort.on('message', ({ dirname, cityName, distFolder }) => {
+    fs.readdir(dirname, async (err, files) => {
         const filename = files.shift();
         const filePath = path.join(dirname, filename);
         const kebabCaseCityName = dashify(cityName);
@@ -18,6 +18,6 @@ parentPort.on('message', async ({ dirname, cityName, distFolder }) => {
         console.log('CSV file created:', cityName);
         console.log('Creating CSV for city infos:', cityName);
         await createCSVForCityInfos(cityInfos, preparedCityInfosFilePath);
-
+        parentPort.close();
     })
 })
