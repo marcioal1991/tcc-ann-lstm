@@ -3,6 +3,13 @@ import path from "path";
 import '../common/load-env.js'
 import WorkerManager from "../common/WorkerManager.js";
 import { availableThreads } from "../common/general.js";
+import mongoManager from "../common/db.js";
+
+const database = mongoManager.createDb('meteorological-data');
+
+console.log('creating index');
+const index = await database.collection('data').createIndex({ city_id: 1 });
+console.log('index created', index);
 
 const CSV_FOLDER = process.env.FOLDER_PREPARED_CSV;
 const workerManager = new WorkerManager(path.join(import.meta.dirname, './worker.js'), availableThreads);

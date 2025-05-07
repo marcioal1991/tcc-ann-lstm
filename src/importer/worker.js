@@ -5,7 +5,7 @@ import { readCSV } from "./utils.js";
 import mongoManager from './../common/db.js';
 
 const database = mongoManager.createDb('meteorological-data');
-const [cityCollection, dataCollection] = [database.collection('city'), database.collection('data')];
+const [cityCollection, dataCollection] = [database.collection('cities'), database.collection('data')];
 
 parentPort.on('message', ({ cityDirectory }) => {
     fs.readdir(cityDirectory, async (err, files) => {
@@ -25,15 +25,15 @@ parentPort.on('message', ({ cityDirectory }) => {
                 return acc;
             }, {})
 
-
             const doc = await cityCollection.insertOne(reducedInfo);
             resolve(doc);
         });
 
         const csvDocument = await readCSV(dataCsv, async (data, resolve) => {
-            data.forEach((item) => {
-                item.city_id = cityDocument.insertedId;
-            })
+            data.filter(item => Object.entries(item).length !== 0)
+                .forEach((item) => {
+                    item.city_id = cityDocument.insertedId;
+                })
 
             const dataDocuments = await dataCollection.insertMany(data);
             resolve(dataDocuments)

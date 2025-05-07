@@ -6,7 +6,13 @@ import mongoManager from "../common/db.js";
 
 const workerManager = new WorkerManager(path.join(import.meta.dirname, './worker.js'), availableThreads);
 const database = mongoManager.createDb('meteorological-data');
-const citiesCollection = await database.collection('city').find({}, { projection: { _id: 1 } }).toArray();
+const normalizedDatabase = mongoManager.createDb('meteorological-data-normalized');
+
+console.log('creating index');
+const index = await normalizedDatabase.collection('data').createIndex({ city_id: 1 });
+console.log('index created', index);
+
+const citiesCollection = await database.collection('cities').find({}, { projection: { _id: 1 } }).toArray();
 const cities = citiesCollection.map(item => item._id.toString());
 
 while (cities.length > 0) {
