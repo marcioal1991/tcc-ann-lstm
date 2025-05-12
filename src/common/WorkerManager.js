@@ -1,4 +1,4 @@
-import { Worker } from 'worker_threads'
+import {Worker, workerData} from 'worker_threads'
 import fs from "fs";
 
 export default class WorkerManager {
@@ -6,10 +6,13 @@ export default class WorkerManager {
     workerScript = null;
     workers = new Set();
     availableWorkers = new Set();
+    workerData = {};
 
-    constructor(workerScript, size) {
+    constructor(workerScript, size, workerData) {
         this.size = size;
         this.workerScript = workerScript;
+        this.workerData = workerData;
+
         if (!fs.existsSync(this.workerScript)) {
             throw new Error(`Worker script not found: ${this.workerScript}`);
         }
@@ -19,7 +22,9 @@ export default class WorkerManager {
 
     createWorkers() {
         for (let i = 0; i < this.size; i++) {
-            const worker = new Worker(this.workerScript);
+            const worker = new Worker(this.workerScript, {
+                workerData: this.workerData,
+            });
             this.workers.add(worker);
             this.availableWorkers.add(worker);
         }
@@ -51,5 +56,14 @@ export default class WorkerManager {
 
     getWorkers() {
         return this.workers;
+    }
+
+    async destroy() {
+        while(this.workers.size > 0) {
+            const worker = this.workers.values().next().value;
+            await worker.terminate();
+
+            this.workers.delete(worker);
+        }
     }
 }

@@ -35,7 +35,13 @@ parentPort.on('message', ({ cityDirectory }) => {
                     item.city_id = cityDocument.insertedId;
                 })
 
-            const dataDocuments = await dataCollection.insertMany(data);
+            const dataDocuments = [];
+            while (data.length) {
+                const dataSlice = data.splice(0, 1000);
+                const insertedDocuments = await dataCollection.insertMany(dataSlice);
+                dataDocuments.push(insertedDocuments);
+            }
+
             resolve(dataDocuments)
         });
 

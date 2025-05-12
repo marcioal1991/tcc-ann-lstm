@@ -1,4 +1,3 @@
-
 const convertTime = (time) => {
     const str = time.toString().padStart(4, '0');
     const hours = str.slice(0, 2);
@@ -7,7 +6,7 @@ const convertTime = (time) => {
     return `${hours}:${minutes}:00`;
 }
 const convertToNumberOrNull = (value) => {
-    value = value.trim();
+    value = value.trim().replace(',', '.');
     if (value === 'null') return null;
     if (value === '') return null;
     return Number(value);
@@ -26,7 +25,7 @@ const convertToNumberOrNull = (value) => {
  });
 
 export const normalizeData = (data, cityId) => ({
-    measurement_datetime: `${data['Data Medicao']} ${convertTime(data['Hora Medicao'])}`,
+    measurement_datetime: new Date(`${data['Data Medicao']} ${convertTime(data['Hora Medicao'])}`),
     total_precipitation_hourly: convertToNumberOrNull(data['PRECIPITACAO TOTAL, HORARIO(mm)']),
     atmospheric_pressure_station_level: convertToNumberOrNull(data['PRESSAO ATMOSFERICA AO NIVEL DA ESTACAO, HORARIA(mB)']),
     sea_level_pressure_reduced_aut: convertToNumberOrNull(data['PRESSAO ATMOSFERICA REDUZIDA NIVEL DO MAR, AUT(mB)']),

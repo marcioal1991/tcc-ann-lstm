@@ -14,7 +14,7 @@ services:
       - ann-lstm
   node:
     container_name: node
-    user: 1000:1000
+#    user: 1000:1000
     build:
       context: .
       dockerfile: ../docker/Dockerfile

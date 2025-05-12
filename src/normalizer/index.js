@@ -8,9 +8,11 @@ const workerManager = new WorkerManager(path.join(import.meta.dirname, './worker
 const database = mongoManager.createDb('meteorological-data');
 const normalizedDatabase = mongoManager.createDb('meteorological-data-normalized');
 
-console.log('creating index');
-const index = await normalizedDatabase.collection('data').createIndex({ city_id: 1 });
-console.log('index created', index);
+['city_id', 'measurement_datetime'].forEach(async indexName => {
+    console.log('creating city index');
+    const index = await normalizedDatabase.collection('data').createIndex({ [indexName]: 1 });
+    console.log('index created', index);
+});
 
 const citiesCollection = await database.collection('cities').find({}, { projection: { _id: 1 } }).toArray();
 const cities = citiesCollection.map(item => item._id.toString());
