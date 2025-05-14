@@ -13,9 +13,15 @@ parentPort.on('message', async ({ cityId }) => {
         .toArray();
 
     for (const doc of dataDocuments) {
-        FEATURES.forEach(([feature, value]) => {
-            MIN_MAX[feature].MIN = MIN_MAX[feature].MIN === null ? value : Math.min(MIN_MAX[feature].MIN, value);
-            MIN_MAX[feature].MAX = MIN_MAX[feature].MAX === null ? value : Math.max(MIN_MAX[feature].MAX, value);
+        FEATURES.forEach((feature) => {
+            try {
+                MIN_MAX[feature].MIN = MIN_MAX[feature].MIN === null ? doc[feature] : Math.min(MIN_MAX[feature].MIN, doc[feature]);
+                MIN_MAX[feature].MAX = MIN_MAX[feature].MAX === null ? doc[feature] : Math.max(MIN_MAX[feature].MAX, doc[feature]);
+            } catch (e) {
+                console.log(feature)
+                throw e;
+            }
+
         });
     }
 

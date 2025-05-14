@@ -12,7 +12,15 @@ const dataNormalizedCollection = database.collection('data-normalized');
 parentPort.on('message', async ({ cityId }) => {
     let OFFSET = 0;
     let CURRENT_TOTAL = 0;
-    const TOTAL_TO_INSERT = await dataCollection.find({ city_id: new ObjectId(cityId) }).count();
+    const TOTAL_TO_INSERT = await dataCollection.countDocuments({ city_id: new ObjectId(cityId) });
+
+    if (TOTAL_TO_INSERT === 0) {
+        parentPort.postMessage({
+            processFinished: true,
+        });
+
+        return;
+    }
 
     do {
         const dataDocuments = await dataCollection.find({ city_id: new ObjectId(cityId) })
@@ -36,9 +44,9 @@ parentPort.on('message', async ({ cityId }) => {
                 return acc;
 
             }, {});
-        })
-
+        });
         await dataNormalizedCollection.insertMany(normalizedData);
+
     } while (CURRENT_TOTAL !== TOTAL_TO_INSERT);
 
     parentPort.postMessage({

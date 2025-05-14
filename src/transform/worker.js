@@ -17,7 +17,9 @@ parentPort.on('message', async ({ cityId }) => {
     const city = await importedCityCollection.findOne({ _id: new ObjectId(cityId) });
     const normalizedCityData = normalizeCity(city);
     const insertedCity = await normalizedCityCollection.insertOne(normalizedCityData);
-    const TOTAL_TO_INSERT = await importedDataCollection.find({ city_id: city._id }).count();
+    const TOTAL_TO_INSERT = await importedDataCollection.countDocuments({ city_id: city._id });
+
+    let IS_FIRST_ROW_ACCEPTED = false;
     do {
         const dataArray = await importedDataCollection.find({ city_id: city._id })
             .limit(ITEMS_PER_QUERY)
@@ -31,7 +33,20 @@ parentPort.on('message', async ({ cityId }) => {
         const normalizedData = [];
         while (dataArray.length > 0) {
             const data = dataArray.shift();
-            normalizedData.push(normalizeData(data, insertedCity.insertedId));
+            const normalized = normalizeData(data, insertedCity.insertedId);
+            if (IS_FIRST_ROW_ACCEPTED === false) {
+                const someIsNullable = Object.entries(normalizedData)
+                    .filter(([key, value]) => ['city_id', 'measurement_datetime'].includes(key))
+                    .some(([key, value]) => value === null || value === undefined);
+
+                if (someIsNullable) {
+                    continue;
+                }
+
+                IS_FIRST_ROW_ACCEPTED = true;
+            }
+
+            normalizedData.push(normalized);
         }
 
         await normalizedDataCollection.insertMany(normalizedData);

@@ -1,5 +1,4 @@
 import path from "path";
-import * as tf from '@tensorflow/tfjs-node-gpu';
 import '../common/load-env.js';
 import mongoManager from "../common/db.js";
 import WorkerManager from "../common/WorkerManager.js";
@@ -95,6 +94,8 @@ await (async function () {
                 console.log('Finished', nextCity)
                 done();
                 worker.off('message', listener);
+                console.log(`Normalized ${citiesIds.length - cities.length} of ${citiesIds.length} cities`);
+                return;
             }
 
             console.log('Fill with data');
