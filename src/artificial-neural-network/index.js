@@ -16,7 +16,7 @@ const MIN_MAX = await (async function () {
     const cities = citiesIds.map(id => id.toString());
     const TOTAL_CITIES = cities.length;
     let TOTAL_CITIES_ANALYZED = 0;
-    const workerManager = new WorkerManager(path.join(import.meta.dirname, './worker.js'), 6);
+    const workerManager = new WorkerManager(path.join(import.meta.dirname, './worker-min-max.js'), 6);
 
     while (TOTAL_CITIES >= TOTAL_CITIES_ANALYZED) {
         if (!workerManager.hasAvailableWorker) {
@@ -113,45 +113,5 @@ await (async function () {
     }
 
 }());
-process.exit();
 
-// const WINDOWS_SIZE = 24;
-//
-//
-// const windowSize = 3;
-// const { X, y } = generateData(100, windowSize);
-//
-// // Normaliza e converte para tensor com shape [amostras, timesteps, features]
-// const Xtensor = tf.tensor3d(X.map(seq => seq.map(n => [n])), [X.length, windowSize, 1]);
-// const ytensor = tf.tensor2d(y, [y.length, 1]);
-//
-// // Modelo LSTM
-// const model = tf.sequential();
-// model.add(tf.layers.lstm({
-//     units: 50,
-//     inputShape: [windowSize, 1]
-// }));
-// model.add(tf.layers.dense({ units: 1 }));
-//
-// model.compile({
-//     optimizer: 'adam',
-//     loss: 'meanSquaredError'
-// });
-//
-// // Treinamento
-// (async () => {
-//     await model.fit(Xtensor, ytensor, {
-//         epochs: 50,
-//         batchSize: 16,
-//         callbacks: {
-//             onEpochEnd: (epoch, logs) => {
-//                 console.log(`Epoch ${epoch + 1}: loss = ${logs.loss}`);
-//             }
-//         }
-//     });
-//
-//     // Previsão
-//     const testInput = tf.tensor3d([[[100], [101], [102]]], [1, windowSize, 1]);
-//     const prediction = model.predict(testInput);
-//     prediction.print(); // Deve prever ~103
-// })();
+process.exit();

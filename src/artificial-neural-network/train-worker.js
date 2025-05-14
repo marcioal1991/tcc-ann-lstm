@@ -6,11 +6,15 @@ import { WINDOW_SIZE, FEATURES, MEASUREMENT_FEATURE } from "../common/constants.
 import mongoManager from "../common/db.js";
 
 const formatMemoryUsage = (data) => Math.round(data / 1024 / 1024 * 100) / 100;
+
 const database = mongoManager.createDb('meteorological-data-normalized');
 const collection = database.collection('data-normalized');
-const TOTAL_ITEMS = await collection.find({
-    city_id: new ObjectId('68213e9c9f989d9bf813504d')
-}).count();
+const TOTAL_ITEMS = await collection.countDocuments({
+    city_id: new ObjectId('68213e9c9f989d9bf813504d'),
+    measurement_datetime: {
+        $lte: new Date('2020-01-01T00:00:00Z'),
+    }
+});
 
 console.log(`Need to iterate through ${TOTAL_ITEMS}`);
 const x = [];
@@ -23,7 +27,10 @@ const ITEMS_PER_QUERY = 48*30;
 
 while(TOTAL_ITEMS > CURRENT_TOTAL) {
     const documentsCollection = await collection.find({
-        city_id: new ObjectId('68213e9c9f989d9bf813504d')
+        city_id: new ObjectId('68213e9c9f989d9bf813504d'),
+        measurement_datetime: {
+            $lte: new Date('2020-01-01T00:00:00Z'),
+        }
     })
         .limit(ITEMS_PER_QUERY)
         .skip(OFFSET)
@@ -31,9 +38,6 @@ while(TOTAL_ITEMS > CURRENT_TOTAL) {
         .toArray();
 
     documents = documents.concat(documentsCollection);
-    // console.log(documents.map((doc) => doc.measurement_datetime));
-    // await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log('LOADED');
     CURRENT_TOTAL += ITEMS_PER_QUERY;
     OFFSET += ITEMS_PER_QUERY;
     console.log(`Iterate through ${CURRENT_TOTAL} of ${TOTAL_ITEMS} items`);
@@ -70,7 +74,7 @@ const model = tf.sequential();
 
 
 model.add(tf.layers.lstm({
-    units: 64,
+    units: 128,
     inputShape: [
         WINDOW_SIZE,
         FEATURES.length,
@@ -79,21 +83,28 @@ model.add(tf.layers.lstm({
 
 model.add(tf.layers.dense({
     units: 1,
-    activation: 'sigmoid',
+    activation: 'linear',
 }));
 
 
 model.compile({
     optimizer: tf.train.adam(),
-    loss: "binaryCrossentropy",
-    metrics: ["accuracy"],
+    loss: 'meanSquaredError',
+    metrics: ["mae"],
 });
 
 console.log('train model')
 
+model.summary();
+
 await model.fit(xData, yData, {
-    epochs: 10,
+    epochs: 4,
     batchSize: 128,
     validationSplit: 0.2,
     callbacks: tf.callbacks.earlyStopping({ patience: 3 })
 });
+
+await model.save('file://./model');
+
+console.log('train ended');
+process.exit();
