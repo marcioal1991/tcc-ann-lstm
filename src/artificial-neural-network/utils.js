@@ -1,16 +1,27 @@
 import * as tf from '@tensorflow/tfjs-node-gpu';
 import { ObjectId } from "mongodb";
 import "../common/load-env.js"
-import { WINDOW_SIZE, FEATURES, MEASUREMENT_FEATURE } from "../common/constants.js";
+import {WINDOW_SIZE, FEATURES, MEASUREMENT_FEATURE, SOFT_WEIGHTS, HARD_WEIGHTS} from "../common/constants.js";
 import mongoManager from "../common/db.js";
+import dashify from "dashify";
 
 const formatMemoryUsage = (data) => Math.round(data / 1024 / 1024 * 100) / 100;
 
 const database = mongoManager.createDb('meteorological-data-normalized');
 const collection = database.collection('data-normalized');
 
-export const train = async (data) => {
+export const trainWithoutWeights = async (data) => {
     const { cityId, cityName } = data;
+    await train(cityId, cityName, SOFT_WEIGHTS);
+}
+
+export const trainWithWeights = async (data) => {
+    const { cityId, cityName } = data;
+    await train(cityId, cityName, HARD_WEIGHTS);
+}
+
+
+const train = async (cityId, cityName, weights) => {
     const cityObjectId = new ObjectId(cityId);
     const TOTAL_ITEMS = await collection.countDocuments({
         city_id: cityObjectId,
@@ -53,7 +64,7 @@ export const train = async (data) => {
             // Get all 24 hours to create a shape for next precipitation hour
             for (let j = 0; j < WINDOW_SIZE; j++) {
                 const current = documents[i + j];
-                window.push(FEATURES.map(feature => current[feature]));
+                window.push(FEATURES.map(feature => current[feature] * weights[feature]));
             }
 
             x.push(window);
@@ -66,11 +77,39 @@ export const train = async (data) => {
         documents = documents.splice((WINDOW_SIZE) * -1);
     }
 
+    console.log('Create LSTM');
+    const model = createLSTM();
+    console.log('LSTM created');
 
+    console.log('Starting training');
+    await trainLSTM(model, x, y, `${cityName}-without-weight`);
+    console.log('Train ended');
+}
+
+
+const trainLSTM = async (model, x, y, suffix) => {
     const xData = tf.tensor3d(x);
     const yData = tf.tensor2d(y);
-    const model = tf.sequential();
+    const logDir = `/logs/training/${dashify(suffix)}`;
+    const tensorBoardCallback = tf.node.tensorBoard(logDir);
 
+    await model.fit(xData, yData, {
+        epochs: 4,
+        batchSize: 128,
+        validationSplit: 0.2,
+        callbacks: [
+            tf.callbacks.earlyStopping({ patience: 3 }),
+            tensorBoardCallback
+        ]
+    });
+
+    await model.save(`file://../models/model-${dashify(suffix)}`);
+
+    model.dispose();
+
+};
+const createLSTM = () => {
+    const model = tf.sequential();
 
     model.add(tf.layers.lstm({
         units: 128,
@@ -93,24 +132,9 @@ export const train = async (data) => {
         metrics: ["mae"],
     });
 
-    console.log('train model')
-
     model.summary();
 
-    const logDir = '/logs/training';
-    const tensorBoardCallback = tf.node.tensorBoard(logDir);
-
-    await model.fit(xData, yData, {
-        epochs: 4,
-        batchSize: 128,
-        validationSplit: 0.2,
-        callbacks: [
-            tf.callbacks.earlyStopping({ patience: 3 }),
-            tensorBoardCallback
-        ]
-    });
-
-    await model.save(`file://../models/model-${cityName}`);
-
-    console.log('train ended');
+    return model;
 }
+
+
