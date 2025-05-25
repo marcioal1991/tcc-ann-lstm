@@ -22,6 +22,7 @@ services:
     volumes:
       - ./:/app
       - ../resources:/resources
+      - ../logs:/logs
     ports:
       - '80:80'
     depends_on:
@@ -39,7 +40,7 @@ services:
     ports:
       - "6006:6006"
     volumes:
-      - ./logs:/logs
+      - ../logs:/logs
     command: "tensorboard --logdir=/logs --host=0.0.0.0"
     depends_on:
       - node

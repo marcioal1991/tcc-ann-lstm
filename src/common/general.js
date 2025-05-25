@@ -12,3 +12,4 @@ export const initializeMinMax = () => FEATURES.reduce((acc, item) => {
 }, {});
 
 export const normalizeValues = (MIN, MAX, value) => (value - MIN) / (MAX - MIN);
+export const denormalizeValues = (MIN, MAX, value) => value * (MAX - MIN) + MIN;

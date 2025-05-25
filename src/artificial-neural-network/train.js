@@ -1,4 +1,3 @@
-import { parentPort, workerData } from "worker_threads";
 import * as tf from '@tensorflow/tfjs-node-gpu';
 import { ObjectId } from "mongodb";
 import "../common/load-env.js"
@@ -10,9 +9,8 @@ const formatMemoryUsage = (data) => Math.round(data / 1024 / 1024 * 100) / 100;
 const database = mongoManager.createDb('meteorological-data-normalized');
 const collection = database.collection('data-normalized');
 
-parentPort.on('message', async (data) => {
-    const { cityId } = data;
-    console.log(cityId);
+export const train = async (data) => {
+    const { cityId, cityName } = data;
     const cityObjectId = new ObjectId(cityId);
     const TOTAL_ITEMS = await collection.countDocuments({
         city_id: cityObjectId,
@@ -65,11 +63,6 @@ parentPort.on('message', async (data) => {
         const memoryUsage = formatMemoryUsage(process.memoryUsage().heapUsed);
         console.log(memoryUsage, cityId);
 
-        if (memoryUsage > 1500) {
-            global.gc();
-
-        }
-
         documents = documents.splice((WINDOW_SIZE) * -1);
     }
 
@@ -81,6 +74,7 @@ parentPort.on('message', async (data) => {
 
     model.add(tf.layers.lstm({
         units: 128,
+        activation: 'relu',
         inputShape: [
             WINDOW_SIZE,
             FEATURES.length,
@@ -103,14 +97,20 @@ parentPort.on('message', async (data) => {
 
     model.summary();
 
+    const logDir = '/logs/training';
+    const tensorBoardCallback = tf.node.tensorBoard(logDir);
+
     await model.fit(xData, yData, {
-        epochs: 2,
+        epochs: 4,
         batchSize: 128,
         validationSplit: 0.2,
-        callbacks: tf.callbacks.earlyStopping({ patience: 3 })
+        callbacks: [
+            tf.callbacks.earlyStopping({ patience: 3 }),
+            tensorBoardCallback
+        ]
     });
 
-    await model.save(`file://./model-${cityId}`);
+    await model.save(`file://./model-${cityName}`);
 
     console.log('train ended');
-});
+}
