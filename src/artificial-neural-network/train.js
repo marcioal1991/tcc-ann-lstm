@@ -110,7 +110,7 @@ export const train = async (data) => {
         ]
     });
 
-    await model.save(`file://./model-${cityName}`);
+    await model.save(`file://../models/model-${cityName}`);
 
     console.log('train ended');
 }

@@ -23,6 +23,7 @@ services:
       - ./:/app
       - ../resources:/resources
       - ../logs:/logs
+      - ../models:/models
     ports:
       - '80:80'
     depends_on:

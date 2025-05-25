@@ -29,7 +29,7 @@ const cities = await citiesCollection.find({
 for (const city of cities) {
     const cityId = city._id;
     const cityName = city.name;
-    const model = await tf.loadLayersModel(`file://./model-${cityName}/model.json`);
+    const model = await tf.loadLayersModel(`file://../models/model-${cityName}/model.json`);
 
     const MAX_MIN = await minMaxCollection.findOne({}, { sort: { _id: -1 }});
     const { MIN, MAX } = MAX_MIN.total_precipitation_hourly;
