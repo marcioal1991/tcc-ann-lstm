@@ -16,7 +16,7 @@ const normalizedDatabase = mongoManager.createDb('meteorological-data-normalized
 
 const citiesCollection = await database.collection('cities').find({}, { projection: { _id: 1 } }).toArray();
 const cities = citiesCollection.map(item => item._id.toString());
-
+const totalCities = cities.length;
 while (cities.length > 0) {
     if (!workerManager.hasAvailableWorker) {
         console.log('wait for next available worker');
@@ -30,6 +30,7 @@ while (cities.length > 0) {
             console.log('Finished', nextCity)
             done();
             worker.off('message', listener);
+            console.log(`Normalized ${totalCities - cities.length} of ${totalCities} cities`);
         }
     }
 

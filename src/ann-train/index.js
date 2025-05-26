@@ -1,12 +1,13 @@
 
 import '../common/load-env.js';
 import mongoManager from '../common/db.js';
-import { trainWithoutWeights, trainWithWeights } from "./utils.js";
+import { trainWithoutWeights, trainWithWeights } from "./train.js";
+import dashify from "dashify";
 
 const database = mongoManager.createDb('meteorological-data-normalized');
 const collection = database.collection('cities');
 
-const cities = await collection.find({
+const city = await collection.findOne({
     station_code: {
         $in: [
             'A801', // PORTO ALEGRE - JARDIM BOTANICO
@@ -15,19 +16,13 @@ const cities = await collection.find({
 }, {
     _id: 1,
     name: 1,
-}).toArray();
+});
 
-for (const city of cities) {
-    await trainWithoutWeights({
-        cityId: city._id.toString(),
-        cityName: city.name,
-    });
+const id = city._id;
+const suffix = dashify(city.name);
+await trainWithoutWeights(id, suffix);
+await trainWithWeights(id, suffix);
 
-    await trainWithWeights({
-        cityId: city._id.toString(),
-        cityName: city.name,
-    });
-}
 console.log('All training models finished');
 
 process.exit();

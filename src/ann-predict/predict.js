@@ -1,39 +1,29 @@
 import * as tf from '@tensorflow/tfjs-node-gpu';
 import '../common/load-env.js';
 import mongoManager from "../common/db.js";
-import { FEATURES, WINDOW_SIZE } from "../common/constants.js";
+import {
+    FEATURES_FOR_SHAPE,
+    HARD_WEIGHTS,
+    SOFT_WEIGHTS,
+    WINDOW_SIZE
+} from "../common/constants.js";
 import { denormalizeValues } from "../common/general.js";
 
 const database = mongoManager.createDb('meteorological-data-normalized');
-const [
-    citiesCollection,
-    dataNormalizedCollection,
-    minMaxCollection,
-    ] = [
-        database.collection('cities'),
-        database.collection('data-normalized'),
-        database.collection('feature_min_max_normalized'),
-    ];
+const dataNormalizedCollection = database.collection('data-normalized');
 
-const cities = await citiesCollection.find({
-    station_code: {
-        $in: [
-            'A801', // PORTO ALEGRE - JARDIM BOTANICO
-        ],
-    }
-}, {
-    _id: 1,
-    name: 1,
-}).toArray();
 
-for (const city of cities) {
-    const cityId = city._id;
-    const cityName = city.name;
-    const model = await tf.loadLayersModel(`file://../models/model-${cityName}/model.json`);
+export const predictWithWeights = async (cityId, suffix, MIN, MAX) => {
+    await predict(cityId, `${suffix}-with-weight`, MIN, MAX, HARD_WEIGHTS);
+};
 
-    const MAX_MIN = await minMaxCollection.findOne({}, { sort: { _id: -1 }});
-    const { MIN, MAX } = MAX_MIN.total_precipitation_hourly;
+export const predictWithoutWeights = async (cityId, suffix, MIN, MAX) => {
+    await predict(cityId, `${suffix}-without-weight`, MIN, MAX, SOFT_WEIGHTS);
+}
 
+const predict = async (cityId, name, MIN, MAX, weights) => {
+    console.log(cityId);
+    const model = await tf.loadLayersModel(`file://../models/model-${name}/model.json`);
     const data2024 = await dataNormalizedCollection.find({
         city_id: cityId,
         measurement_datetime: {
@@ -43,6 +33,7 @@ for (const city of cities) {
     }).sort({ measurement_datetime: 1 })
         .toArray();
 
+    console.log(data2024);
     const inputs = [];
 
     for (let i = 0; i < data2024.length - WINDOW_SIZE; i++) {
@@ -50,19 +41,17 @@ for (const city of cities) {
 
         for (let j = 0; j < WINDOW_SIZE; j++) {
             const doc = data2024[i + j];
-            window.push(FEATURES.map(f => doc[f]));
+            window.push(FEATURES_FOR_SHAPE.map(f => doc[f] * weights[f]));
         }
 
         inputs.push(window);
     }
 
-    console.log(inputs);
-
     const xPredict = tf.tensor3d(inputs);
     const yPred = model.predict(xPredict);
     const predictions = await yPred.array();
 
-    const writer = tf.node.summaryFileWriter(`/logs/predictions/${cityName}`);
+    const writer = tf.node.summaryFileWriter(`/logs/predictions-${name}/`);
     const stepOffset = 0;
     for (let i = 0; i < predictions.length; i++) {
         const pred = denormalizeValues(MIN, MAX, predictions[i][0]);
@@ -74,7 +63,7 @@ for (const city of cities) {
 
     const predictedValues = predictions.map(p => p[0]);
     const actualValues = data2024.slice(WINDOW_SIZE).map(doc => doc.total_precipitation_hourly);
-    const writerHistogram = tf.node.summaryFileWriter('/logs/predictions-histograms');
+    const writerHistogram = tf.node.summaryFileWriter(`/logs/predictions-histograms-${name}`);
     const dateLabels = data2024.map(doc =>
         doc.measurement_datetime.toISOString().slice(0, 10)
     );
@@ -82,8 +71,6 @@ for (const city of cities) {
     const groupedPred = {};
     const groupedActual = {};
 
-console.log(dateLabels.length);
-process.exit()
     for (let i = 0; i < dateLabels.length; i++) {
         const date = dateLabels[i];
         const pred = predictedValues[i];
@@ -103,7 +90,6 @@ process.exit()
 
     for (let step = 0; step < sortedDates.length; step++) {
         const date = sortedDates[step];
-        console.log(date, groupedPred[date], groupedActual[date]);
         const predTensor = tf.tensor1d(groupedPred[date]);
         const actualTensor = tf.tensor1d(groupedActual[date]);
 
@@ -113,7 +99,4 @@ process.exit()
         predTensor.dispose();
         actualTensor.dispose();
     }
-
-    process.exit()
-}
-
+};

@@ -22,6 +22,8 @@ export const FEATURES =[
     'wind_speed'
 ];
 
+export const FEATURES_FOR_SHAPE = FEATURES.filter((f) => f !== MEASUREMENT_FEATURE);
+
 export const SOFT_WEIGHTS = {
     total_precipitation_hourly: 1,
     atmospheric_pressure_station_level: 1,
