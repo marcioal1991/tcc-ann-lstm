@@ -16,6 +16,8 @@ const workerManager = new WorkerManager(path.join(import.meta.dirname, './worker
 
 fs.readdir(CSV_FOLDER, async (err, directories) => {
     if (err) throw err;
+    const TOTAL_DIRECTORIES = directories.length;
+    let TOTAL_DIRECTORIES_PROCESSED = 0;
 
     while (directories.length > 0) {
         if (!workerManager.hasAvailableWorker) {
@@ -32,6 +34,8 @@ fs.readdir(CSV_FOLDER, async (err, directories) => {
                 console.log(`Worker task done`)
                 done();
                 console.log('Removing listener from worker');
+                TOTAL_DIRECTORIES_PROCESSED++;
+                console.log(`Processed ${TOTAL_DIRECTORIES_PROCESSED} of ${TOTAL_DIRECTORIES} directories.`);
                 worker.off('message', listener);
             }
         };

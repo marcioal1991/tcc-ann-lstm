@@ -1,3 +1,5 @@
+import path from "path";
+import { promises as fs } from 'fs';
 import * as tf from '@tensorflow/tfjs-node-gpu';
 import "../common/load-env.js"
 import {
@@ -22,8 +24,7 @@ export const trainWithWeights = async (cityId, suffix) => {
     await train(cityId, `${suffix}-with-weight`, HARD_WEIGHTS);
 }
 
-
-const train = async (cityId, name, weights) => {
+export const generateShapes = async (cityId, name, weights) => {
     const TOTAL_ITEMS = await collection.countDocuments({
         city_id: cityId,
         measurement_datetime: {
@@ -38,7 +39,8 @@ const train = async (cityId, name, weights) => {
     let OFFSET = 0;
     let CURRENT_TOTAL = 0;
     let documents = [];
-    const ITEMS_PER_QUERY = 48*30;
+    let CURRENT_WINDOW = [];
+    const ITEMS_PER_QUERY = 48*120;
 
     while(TOTAL_ITEMS > CURRENT_TOTAL) {
         const documentsCollection = await collection.find({
@@ -57,27 +59,43 @@ const train = async (cityId, name, weights) => {
         OFFSET += ITEMS_PER_QUERY;
         console.log(`Iterate through ${CURRENT_TOTAL} of ${TOTAL_ITEMS} items`);
 
-        for (let i = 1; i < documents.length - WINDOW_SIZE; i++) {
+        for (let i = 0; i < documents.length - WINDOW_SIZE; i++) {
             const window = [];
             const NEXT_HOUR_PRECIPITATION = i + WINDOW_SIZE;
             const target = documents[NEXT_HOUR_PRECIPITATION][MEASUREMENT_FEATURE];
 
             // Get all 24 hours to create a shape for next precipitation hour
-            for (let j = 0; j < WINDOW_SIZE; j++) {
-                const current = documents[i + j];
-                window.push(FEATURES_FOR_SHAPE.map(feature => current[feature] * weights[feature]));
+            if (CURRENT_WINDOW.length === 0) {
+                for (let j = 0; j < WINDOW_SIZE; j++) {
+                    const current = documents[i + j];
+                    CURRENT_WINDOW.push(FEATURES_FOR_SHAPE.map(feature => (current[feature] ?? 0) * weights[feature]));
+                }
+            } else {
+                CURRENT_WINDOW.shift();
+                const current = documents[i + WINDOW_SIZE - 1];
+                CURRENT_WINDOW.push(FEATURES_FOR_SHAPE.map(feature => (current[feature] ?? 0) * weights[feature]));
             }
+
+            window.push(...CURRENT_WINDOW);
 
             x.push(window);
             y.push([target]);
         }
 
         const memoryUsage = formatMemoryUsage(process.memoryUsage().heapUsed);
-        console.log(memoryUsage);
+        console.log(`Current memory usage: ${memoryUsage} MB`);
 
-        documents = documents.splice((WINDOW_SIZE) * -1);
+        documents = documents.slice((WINDOW_SIZE) * -1);
     }
 
+    return {
+        x,
+        y
+    };
+};
+
+const train = async (cityId, name, weights) => {
+    const { x, y} = await generateShapes(cityId, name, weights);
     console.log('Create LSTM');
     const model = createLSTM();
     console.log('LSTM created');
@@ -89,14 +107,16 @@ const train = async (cityId, name, weights) => {
 
 
 const trainLSTM = async (model, x, y, suffix) => {
-
     const xData = tf.tensor3d(x);
     const yData = tf.tensor2d(y);
-    const logDir = `/logs/training-${suffix}`;
+
+    const logDir = path.resolve('./logs', `training-${suffix}`);
     const tensorBoardCallback = tf.node.tensorBoard(logDir);
+    const writer = tf.node.summaryFileWriter(logDir);
+    const startTime = Date.now();
 
     await model.fit(xData, yData, {
-        epochs: 8,
+        epochs: 5,
         batchSize: 128,
         validationSplit: 0.2,
         callbacks: [
@@ -105,7 +125,12 @@ const trainLSTM = async (model, x, y, suffix) => {
         ]
     });
 
-    await model.save(`file://../models/model-${suffix}`);
+    const endTime = Date.now();
+    const trainingDurationSeconds = (endTime - startTime) / 1000;
+
+    console.log(`⏱️ Tempo total de treinamento: ${trainingDurationSeconds} segundos`);
+    writer.scalar('training_duration_seconds', trainingDurationSeconds, 0);
+    await model.save(`file://./models/model-${suffix}`);
 
     model.dispose();
 
@@ -115,7 +140,6 @@ const createLSTM = () => {
 
     model.add(tf.layers.lstm({
         units: 128,
-        activation: 'relu',
         inputShape: [
             WINDOW_SIZE,
             FEATURES_FOR_SHAPE.length,

@@ -7,17 +7,18 @@ import { initializeMinMax } from "../common/general.js";
 const database = mongoManager.createDb('meteorological-data-normalized');
 const citiesCollection = await database.collection('cities').find({}, { projection: { _id: 1 } }).toArray();
 const citiesIds = citiesCollection.map(item => item._id.toString());
+const TOTAL_CITIES = citiesIds.length;
 
 const MIN_MAX = await (async function () {
     const MIN_MAX = initializeMinMax();
 
     console.log('Calculating MIN and MAX of the features');
     const cities = citiesIds.map(id => id.toString());
-    const TOTAL_CITIES = cities.length;
+
     let TOTAL_CITIES_ANALYZED = 0;
     const workerManager = new WorkerManager(path.join(import.meta.dirname, './worker-min-max.js'), 6);
 
-    while (TOTAL_CITIES >= TOTAL_CITIES_ANALYZED) {
+    while (cities.length) {
         if (!workerManager.hasAvailableWorker) {
             console.log('wait for next available worker');
             await new Promise(resolve => setTimeout(resolve, 200));
@@ -72,18 +73,18 @@ await (async function () {
         console.log('creating city index');
         const index = await dataNormalizedCollection.createIndex({ [indexName]: 1 });
         console.log('index created', index);
-    };
+    }
 
     const cities = citiesIds.map(id => id);
     const workerManager = new WorkerManager(path.join(import.meta.dirname, './worker-normalize-data.js'), 6, {
         MIN_MAX,
     });
 
-
+    let TOTAL_CITIES_NORMALIZED = 0;
     while (cities.length > 0) {
         if (!workerManager.hasAvailableWorker) {
             console.log('wait for next available worker');
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             continue;
         }
         const nextCity = cities.shift();
@@ -94,7 +95,8 @@ await (async function () {
                 console.log('Finished', nextCity)
                 done();
                 worker.off('message', listener);
-                console.log(`Normalized ${citiesIds.length - cities.length} of ${citiesIds.length} cities`);
+                TOTAL_CITIES_NORMALIZED++;
+                console.log(`Normalized ${TOTAL_CITIES_NORMALIZED} of ${TOTAL_CITIES} cities`);
                 return;
             }
 

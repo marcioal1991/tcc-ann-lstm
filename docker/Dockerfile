@@ -12,6 +12,7 @@ RUN apt update && apt install -y \
     apt clean
 
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
+ENV TF_FORCE_GPU_ALLOW_GROWTH=true
 
 WORKDIR /app
 COPY . .

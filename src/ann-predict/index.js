@@ -23,7 +23,7 @@ const city = await citiesCollection.findOne({
     name: 1,
 });
 
-const suffix = dashify(city.name);
+const suffix = dashify(city.name.split(' ').filter((item) => !item.includes('-')).join(' '));
 const MAX_MIN = await minMaxCollection.findOne({}, { sort: { _id: -1 }});
 const { MIN, MAX } = MAX_MIN.total_precipitation_hourly;
 

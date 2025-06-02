@@ -22,18 +22,16 @@ export const predictWithoutWeights = async (cityId, suffix, MIN, MAX) => {
 }
 
 const predict = async (cityId, name, MIN, MAX, weights) => {
-    console.log(cityId);
-    const model = await tf.loadLayersModel(`file://../models/model-${name}/model.json`);
+    const model = await tf.loadLayersModel(`file://./models/model-${name}/model.json`);
     const data2024 = await dataNormalizedCollection.find({
         city_id: cityId,
         measurement_datetime: {
             $gte: new Date('2024-04-30T00:00:00Z'),
-            $lte: new Date('2024-05-07T23:59:59Z')
+            $lte: new Date('2024-05-31T23:59:59Z')
         }
     }).sort({ measurement_datetime: 1 })
         .toArray();
 
-    console.log(data2024);
     const inputs = [];
 
     for (let i = 0; i < data2024.length - WINDOW_SIZE; i++) {
@@ -51,7 +49,7 @@ const predict = async (cityId, name, MIN, MAX, weights) => {
     const yPred = model.predict(xPredict);
     const predictions = await yPred.array();
 
-    const writer = tf.node.summaryFileWriter(`/logs/predictions-${name}/`);
+    const writer = tf.node.summaryFileWriter(`./logs/predictions-${name}/`);
     const stepOffset = 0;
     for (let i = 0; i < predictions.length; i++) {
         const pred = denormalizeValues(MIN, MAX, predictions[i][0]);
@@ -63,7 +61,7 @@ const predict = async (cityId, name, MIN, MAX, weights) => {
 
     const predictedValues = predictions.map(p => p[0]);
     const actualValues = data2024.slice(WINDOW_SIZE).map(doc => doc.total_precipitation_hourly);
-    const writerHistogram = tf.node.summaryFileWriter(`/logs/predictions-histograms-${name}`);
+    const writerHistogram = tf.node.summaryFileWriter(`./logs/predictions-histograms-${name}`);
     const dateLabels = data2024.map(doc =>
         doc.measurement_datetime.toISOString().slice(0, 10)
     );
@@ -92,9 +90,14 @@ const predict = async (cityId, name, MIN, MAX, weights) => {
         const date = sortedDates[step];
         const predTensor = tf.tensor1d(groupedPred[date]);
         const actualTensor = tf.tensor1d(groupedActual[date]);
-
         writerHistogram.histogram('daily_prediction', predTensor, step);
         writerHistogram.histogram('daily_actual', actualTensor, step);
+
+        const predMean = predTensor.mean().arraySync();
+        const actualMean = actualTensor.mean().arraySync();
+
+        writerHistogram.scalar('daily_prediction_avg', predMean, step);
+        writerHistogram.scalar('daily_actual_avg', actualMean, step);
 
         predTensor.dispose();
         actualTensor.dispose();
