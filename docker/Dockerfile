@@ -11,8 +11,14 @@ RUN apt update && apt install -y \
     npm install -g npm && \
     apt clean
 
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
-ENV TF_FORCE_GPU_ALLOW_GROWTH=true
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcudnn8=8.9.4.*-1+cuda11.8 \
+    libcublas-11-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+#ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+ENV TF_CPP_MIN_LOG_LEVEL=3
 
 WORKDIR /app
 COPY . .

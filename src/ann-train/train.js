@@ -117,7 +117,7 @@ const trainLSTM = async (model, x, y, suffix) => {
 
     await model.fit(xData, yData, {
         epochs: 5,
-        batchSize: 128,
+        batchSize: 32,
         validationSplit: 0.2,
         callbacks: [
             tf.callbacks.earlyStopping({ patience: 3 }),
