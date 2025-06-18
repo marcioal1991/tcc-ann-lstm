@@ -31,15 +31,15 @@ Este projeto implementa uma Rede Neural Artificial do tipo LSTM para previsão d
 ```bash
 git clone https://github.com/marcioal1991/tcc-ann-lstm.git
 cd tcc-ann-lstm
-
+```
 ### Instalar dependências
 ```bash
 npm install
-
+```
 ### Levantar os containers
 ```bash
 docker-compose up -d
-
+```
 Este comando sobe:
 
 MongoDB (para armazenamento dos dados)
